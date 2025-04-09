@@ -1,34 +1,43 @@
-from flask import Flask, request, jsonify
+from flask import Flask, render_template, request 
 import requests
+
 
 app = Flask(__name__)
 
-@app.route('/convert')
-def converter_currency():
-    try:
-        amount = float(request.args.get('amount'))
-        from_currency = request.args.get('from')
-        to_currency =request.args.get('to')
+@app.route("/", methods=["GET", "POST"])
+def index():
+    result = None
+    currencies = []
 
-        url = f"https://api.frankfurter.app/latest?amount={amount}&from={from_currency}&to={to_currency}"
-        response = requests.get(url)
-        response.raise_for_status()
-
+    response = requests.get("https://api.frankfurter.app/currencies")
+    if response.status_code == 200:
         data = response.json()
-        converted = data.json['rates'][to_currency]
+        currencies = list(data.keys()) 
+        
+    if request.method == "POST":
 
-        return jsonify({
-            'amount': amount,
-            'from': from_currency,
-            'to' : to_currency,
-            'converted_amount' : converted
-
-        })
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        amount = request.form.get("amount")
+        from_currency = request.form.get("from_currency")
+        to_currency = request.form.get("to_currency")
 
 
-if __name__ == '__main__':
+        if amount and from_currency and to_currency:
+
+            try:
+                url = f"https://api.frankfurter.app/latest?amount={amount}&from={from_currency}&to={to_currency}"
+       
+       
+                response = requests.get(url)
+       
+                data = response.json()
+        
+                result = f"{amount} {from_currency} = {data['rates'][to_currency]} {to_currency}"
+
+            except:
+    
+                result = "Bir hata oluştu. Lütfen tekrar deneyin."
+  
+    return render_template("index.html", currencies=currencies, result=result)
+
+if __name__ == "__main__":
     app.run(debug=True)
-
